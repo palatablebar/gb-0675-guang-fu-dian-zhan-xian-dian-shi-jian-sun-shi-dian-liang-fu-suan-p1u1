@@ -32,7 +32,12 @@ def rerun(run_id:str):
     previous=store.get(DB_PATH,run_id)
     if 'input_snapshot' not in previous:
         raise BusinessError('INPUT_SNAPSHOT_MISSING','旧批缺少源快照，请重新导入')
-    return store.save(DB_PATH,evaluate({'dataset':previous['source']},snapshot=previous['input_snapshot']))
+    # 先基于不可变输入快照完整重算；evaluate 抛错时尚未写库，旧版与历史原样保留。
+    recomputed=evaluate({'dataset':previous['source']},snapshot=previous['input_snapshot'])
+    # 复核进度（版本号、状态）属于批次行政信息，规则重算不得将其清零。
+    recomputed['revision']=previous.get('revision',1);recomputed['status']=previous.get('status','待复核')
+    # 原子替换：同批号原地更新，事务失败回滚，重试不会新增批次或造成数据丢失。
+    return store.replace(DB_PATH,run_id,recomputed)
 @app.get('/api/runs')
 def runs():
     return store.history(DB_PATH)

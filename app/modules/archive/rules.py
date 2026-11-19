@@ -1,7 +1,12 @@
 import hashlib,json
 
 def archive_decision(state):
-    b=state['balance'];ready=b['row_balanced'] and b['time_balanced'] and b['energy_balanced'] and not b['unknown_segments'] and not state['quarantine']
-    return {'status':'可归档' if ready else '待复核','seal':hashlib.sha256(json.dumps(state['energy_rows'],sort_keys=True).encode()).hexdigest(),'segments':len(state['energy_rows']),'unknown':b['unknown_segments']}
+    b=state['balance']
+    # 封存需无隔离、无证据不足的未定片段，且不存在未确认响应/恢复的待查时段。
+    ready=(b['row_balanced'] and b['time_balanced'] and b['energy_balanced'] and b['settlement_balanced']
+           and not b['unknown_segments'] and not b['pending_segments'] and not state['quarantine'])
+    return {'status':'可归档' if ready else '待复核','seal':hashlib.sha256(json.dumps(state['energy_rows'],sort_keys=True).encode()).hexdigest(),
+            'segments':len(state['energy_rows']),'unknown':b['unknown_segments'],'pending':b['pending_segments'],
+            'settled_loss_kwh':b['settled_loss_kwh'],'pending_loss_kwh':b['pending_loss_kwh']}
 def apply(state):
-    state['archive']=archive_decision(state);state['views']['archive']={'title':'运行凭证','rows':state['event_unions'],'metrics':{'切片':state['archive']['segments'],'未定':state['archive']['unknown'],'状态':state['archive']['status']}}
+    state['archive']=archive_decision(state);state['views']['archive']={'title':'运行凭证','rows':state['event_unions'],'metrics':{'切片':state['archive']['segments'],'未定':state['archive']['unknown'],'待查':state['archive']['pending'],'状态':state['archive']['status']}}

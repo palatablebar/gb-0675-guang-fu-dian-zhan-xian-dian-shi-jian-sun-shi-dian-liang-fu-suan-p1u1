@@ -16,6 +16,23 @@ def save(path, result):
         con.execute('INSERT OR IGNORE INTO runs(id,digest,result) VALUES(?,?,?)', (run_id,result['manifest']['sha256'],json.dumps(result,ensure_ascii=False)))
     return get(path,run_id)
 
+def replace(path, previous_id, result):
+    """复核重算的原子替换：同批号原地更新，任何失败都回滚到旧版，不新增批次、不丢数据。"""
+    run_id=result['manifest']['run_id']
+    if run_id!=previous_id:
+        raise BusinessError('RUN_ID_MISMATCH','重算批号与原批不一致，已保留旧版')
+    payload=json.dumps(result,ensure_ascii=False)
+    con=connect(path)
+    try:
+        with con:
+            cur=con.execute('UPDATE runs SET digest=?,result=? WHERE id=?',(result['manifest']['sha256'],payload,run_id))
+            if cur.rowcount!=1:
+                raise BusinessError('NOT_FOUND','批次不存在',404)
+    except Exception:
+        con.rollback();con.close();raise
+    con.close()
+    return get(path,run_id)
+
 def get(path, run_id):
     with connect(path) as con: row=con.execute('SELECT * FROM runs WHERE id=?',(run_id,)).fetchone()
     if not row: raise BusinessError('NOT_FOUND','批次不存在',404)

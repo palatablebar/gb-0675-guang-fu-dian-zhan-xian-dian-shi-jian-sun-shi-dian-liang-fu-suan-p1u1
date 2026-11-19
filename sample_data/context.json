@@ -38,9 +38,27 @@
       "zone": "西区",
       "capacity_kw": "50",
       "reference": true
+    },
+    "INV-C": {
+      "zone": "南区",
+      "capacity_kw": "80",
+      "reference": false
+    },
+    "REF-C1": {
+      "zone": "南区",
+      "capacity_kw": "80",
+      "reference": true
+    },
+    "REF-C2": {
+      "zone": "南区",
+      "capacity_kw": "80",
+      "reference": true
     }
   },
   "cadence_seconds": 600,
   "irradiance_bin": "100",
-  "min_references": 2
+  "min_references": 2,
+  "response_drop_ratio": "0.10",
+  "recovery_tolerance": "0.05",
+  "recovery_window_seconds": 600
 }
